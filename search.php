@@ -693,7 +693,7 @@ const app = {
         suggestions: [],
         isListening: false,
         pendingFetch: null,
-        panelData: null  // ナレッジパネルデータを保持
+        panelData: null
     },
 
     refs: {
@@ -1016,7 +1016,6 @@ const app = {
         }
 
         try {
-            // webタイプの初回検索時にpanelデータも取得
             if (type === 'web' && isInitial && !this.state.panelData) {
                 const panelPromise = fetch(`${API_ENDPOINT}?q=${encodeURIComponent(this.state.q)}&type=panel`);
                 const webPromise = fetch(`${API_ENDPOINT}?q=${encodeURIComponent(this.state.q)}&type=${type}&pages=${page}`);
@@ -1102,22 +1101,37 @@ const app = {
     },
 
     renderKnowledgePanel(panelData) {
-        if (!panelData || !panelData.wiki_found) return '';
+        if (!panelData) return '';
+        
+        // wiki_priorityがtrueの結果を探す
+        const wikiResult = panelData.results?.find(r => r.wiki_priority) || null;
+        
+        // Wikipedia結果がない場合はパネルを表示しない
+        if (!wikiResult) return '';
         
         const panel = panelData.featured_panel || {};
-        const wikiResult = panelData.results?.find(r => r.wiki_priority) || {};
+        const wikiTitle = panelData.wiki_title || this.state.q;
+        
+        // 説明文を取得（featured_panelから優先、なければwiki結果から）
+        let description = '';
+        if (panel.description) {
+            description = panel.description;
+        } else if (wikiResult.summary) {
+            // 最初の300文字までを抽出
+            description = wikiResult.summary.substring(0, 300);
+            if (wikiResult.summary.length > 300) description += '...';
+        }
         
         return `
             <div class="knowledge-panel">
                 <div class="panel-header">
-                    ${panel.image_url ? `<img src="${panel.image_url}" class="panel-image" alt="${panel.title || ''}">` : ''}
+                    ${panel.image_url ? `<img src="${panel.image_url}" class="panel-image" alt="${wikiTitle}">` : ''}
                     <div class="panel-info">
-                        <h2 class="panel-title">${panelData.wiki_title || this.state.q}</h2>
+                        <h2 class="panel-title">${wikiTitle}</h2>
                         ${panel.subtitle ? `<div class="panel-subtitle">${panel.subtitle}</div>` : ''}
                     </div>
                 </div>
-                ${panel.description ? `<div class="panel-description">${panel.description}</div>` : ''}
-                ${wikiResult.summary && !panel.description ? `<div class="panel-description">${wikiResult.summary.substring(0, 300)}...</div>` : ''}
+                ${description ? `<div class="panel-description">${description}</div>` : ''}
                 ${panel.facts && panel.facts.length > 0 ? `
                     <div class="panel-facts">
                         ${panel.facts.map(fact => `
@@ -1129,7 +1143,7 @@ const app = {
                     </div>
                 ` : ''}
                 <div class="panel-source">
-                    ${wikiResult.url ? `<a href="${wikiResult.url}" target="_blank">Wikipedia</a> より` : 'Wikipedia より'}
+                    <a href="${wikiResult.url}" target="_blank">Wikipedia</a> より
                 </div>
             </div>
         `;
@@ -1155,7 +1169,6 @@ const app = {
     renderWebList(list) {
         let html = '';
         
-        // ナレッジパネルを先頭に追加
         if (this.state.panelData) {
             html += this.renderKnowledgePanel(this.state.panelData);
         }

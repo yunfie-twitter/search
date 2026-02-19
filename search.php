@@ -577,9 +577,9 @@ const app = {
     state: {
         q: '',
         type: 'web',
-        pages: { web: 1, image: 1, video: 1, news: 1, social: 1 },
-        results: { web: [], image: [], video: [], news: [], social: [] },
-        hasMore: { web: true, image: true, video: true, news: true, social: true },
+        pages: { web: 1, image: 1, video: 1, news: 1, social: 1, panel: 1 },
+        results: { web: [], image: [], video: [], news: [], social: [], panel: [] },
+        hasMore: { web: true, image: true, video: true, news: true, social: true, panel: false },
         loading: false,
         totalCount: 0,
         suggestIndex: -1,
@@ -877,9 +877,9 @@ const app = {
     },
 
     resetResults() {
-        this.state.pages = { web: 1, image: 1, video: 1, news: 1, social: 1 };
-        this.state.results = { web: [], image: [], video: [], news: [], social: [] };
-        this.state.hasMore = { web: true, image: true, video: true, news: true, social: true };
+        this.state.pages = { web: 1, image: 1, video: 1, news: 1, social: 1, panel: 1 };
+        this.state.results = { web: [], image: [], video: [], news: [], social: [], panel: [] };
+        this.state.hasMore = { web: true, image: true, video: true, news: true, social: true, panel: false };
         this.refs.container.innerHTML = '';
         this.refs.stats.textContent = '';
     },
@@ -938,11 +938,11 @@ const app = {
     },
 
     flushPendingFetch() {
-        // ロード中に積まれた切替要求を処理（ロード終了後に呼ばれる）
+        // ロード中に積まれた切替要求を処理(ロード終了後に呼ばれる)
         const p = this.state.pendingFetch;
         if (!p) return;
 
-        // 古い要求は捨てる（現在の状態と一致しているかチェック）
+        // 古い要求は捨てる(現在の状態と一致しているかチェック)
         if (p.q === this.state.q && p.type === this.state.type && !this.state.loading) {
             this.state.pendingFetch = null;
             // 再入を避けるため、0ms で次タスク側に逃がす
@@ -1050,7 +1050,7 @@ const app = {
 
 
     renderSocialList(list) {
-        // テキスト整形関数（内部定義または外出し）
+        // テキスト整形関数(内部定義または外出し)
         const formatText = (text) => {
             if (!text) return '';
             // XSS対策エスケープ
@@ -1063,7 +1063,7 @@ const app = {
         };
 
         this.refs.container.innerHTML = list.map(item => {
-            // 画像グリッド処理（既存コード）
+            // 画像グリッド処理(既存コード)
             let imagesHtml = '';
             if (item.hasImages && item.images && item.images.length > 0) {
                 const imgCount = item.images.length;
@@ -1082,7 +1082,7 @@ const app = {
                 `;
             }
 
-            // 本文の整形（formatText適用）
+            // 本文の整形(formatText適用)
             const contentHtml = formatText(item.summary || item.content || item.title);
 
             return `

@@ -140,7 +140,7 @@
 
 .error-illustration {
     width: 100%;
-    max-width: 400px;
+    max-width: 300px;
     margin-bottom: 40px;
     opacity: 0;
     animation: fadeIn 0.8s var(--ease-out) 0.6s forwards;
@@ -206,7 +206,7 @@
 
 @keyframes float {
     0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
+    50% { transform: translateY(-15px); }
 }
 
 @media (max-width: 600px) {
@@ -227,6 +227,10 @@
         width: 100%;
         justify-content: center;
     }
+    
+    .error-illustration {
+        max-width: 240px;
+    }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -246,17 +250,44 @@
 </nav>
 
 <div class="error-container">
-    <!-- イラスト (404専用) -->
+    <!-- クジラのイラスト -->
     <div class="error-illustration">
-        <svg class="whale-404" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- クジラのイラスト -->
-            <ellipse cx="100" cy="90" rx="70" ry="40" fill="var(--primary)" opacity="0.2"/>
-            <ellipse cx="100" cy="80" rx="60" ry="35" fill="var(--primary)" opacity="0.5"/>
-            <circle cx="85" cy="75" r="4" fill="var(--text-main)"/>
-            <path d="M 40 80 Q 35 85 40 90" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" fill="none"/>
-            <path d="M 160 80 Q 165 85 160 90" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <svg class="whale-404" viewBox="0 0 240 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- 水面の波 -->
+            <path d="M 0 100 Q 30 95, 60 100 T 120 100 T 180 100 T 240 100" stroke="rgba(26, 115, 232, 0.2)" stroke-width="2" fill="none"/>
+            <path d="M 0 110 Q 30 105, 60 110 T 120 110 T 180 110 T 240 110" stroke="rgba(26, 115, 232, 0.15)" stroke-width="2" fill="none"/>
+            
+            <!-- クジラの体 -->
+            <ellipse cx="120" cy="90" rx="50" ry="30" fill="rgba(26, 115, 232, 0.8)"/>
+            
+            <!-- クジラの尾 -->
+            <path d="M 70 85 Q 50 85, 40 75 L 35 80 L 40 90 Q 50 95, 70 90 Z" fill="rgba(26, 115, 232, 0.7)"/>
+            
+            <!-- クジラのヒレ -->
+            <path d="M 170 75 Q 180 65, 175 85 Z" fill="rgba(26, 115, 232, 0.6)"/>
+            
+            <!-- 目 -->
+            <circle cx="140" cy="85" r="3" fill="#ffffff"/>
+            <circle cx="140" cy="85" r="1.5" fill="#000000"/>
+            
+            <!-- 口 -->
+            <path d="M 145 92 Q 150 95, 155 92" stroke="rgba(255, 255, 255, 0.5)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            
             <!-- 噴水 -->
-            <path d="M 100 40 Q 95 20 90 10 M 100 40 Q 100 15 100 5 M 100 40 Q 105 20 110 10" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+            <g opacity="0.7">
+                <circle cx="115" cy="50" r="2" fill="rgba(26, 115, 232, 0.4)">
+                    <animate attributeName="cy" values="50;30;50" dur="2s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.7;0;0.7" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="120" cy="45" r="2.5" fill="rgba(26, 115, 232, 0.5)">
+                    <animate attributeName="cy" values="45;20;45" dur="2s" repeatCount="indefinite" begin="0.2s"/>
+                    <animate attributeName="opacity" values="0.7;0;0.7" dur="2s" repeatCount="indefinite" begin="0.2s"/>
+                </circle>
+                <circle cx="125" cy="48" r="2" fill="rgba(26, 115, 232, 0.4)">
+                    <animate attributeName="cy" values="48;28;48" dur="2s" repeatCount="indefinite" begin="0.4s"/>
+                    <animate attributeName="opacity" values="0.7;0;0.7" dur="2s" repeatCount="indefinite" begin="0.4s"/>
+                </circle>
+            </g>
         </svg>
     </div>
 

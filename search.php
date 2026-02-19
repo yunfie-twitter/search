@@ -26,8 +26,6 @@ $q = trim($q);
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#ffffff">
     <link rel="apple-touch-icon" href="/android-chrome-192x192.png">
-    <link rel="shortcut icon" href="/favicon.ico">
-<link rel="icon" href="/favicon.ico" type="image/x-icon">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://cf866966.cloudfree.jp/">
     <meta name="twitter:title" content="wholphin - 高速でシンプルな検索体験">
@@ -417,6 +415,40 @@ main {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 .video-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 見本の「大きいプレーヤー + 中央再生ボタン」をサムネ領域で表現 */
+.video-thumb::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.0);
+    transition: background 0.15s;
+}
+.video-item:hover .video-thumb::after {
+    background: rgba(0,0,0,0.12);
+}
+
+.video-play-btn {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.55);
+    display: grid;
+    place-items: center;
+    backdrop-filter: blur(2px);
+}
+
+.video-play-btn svg {
+    width: 22px;
+    height: 22px;
+    fill: #fff;
+    margin-left: 2px;
+}
+
 .video-info { flex: 1; min-width: 0; }
 .video-title {
     font-size: 18px; color: var(--text-link); line-height: 1.3;
@@ -427,30 +459,6 @@ main {
 .video-desc {
     font-size: 13px; color: var(--text-sub); margin-top: 8px;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-
-.video-actions {
-    margin-top: 10px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.video-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: 12px;
-    color: var(--text-main);
-    background: var(--bg-surface);
-    transition: background 0.2s, border-color 0.2s;
-}
-
-.video-action-btn:hover {
-    background: var(--bg-hover);
 }
 
 .video-embed {
@@ -1164,21 +1172,37 @@ const app = {
         try {
             const u = new URL(url);
             const host = u.hostname.replace(/^www\./, '');
-            // とりあえずYouTube系のみ（要望あれば追加）
-            if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtu.be') return true;
-            return false;
+
+            // 動画配信 / ライブ / 楽曲系: noembedで拾える可能性が高い所を広めに許可
+            const allowHosts = new Set([
+                // Video
+                'youtube.com','m.youtube.com','youtu.be',
+                'vimeo.com','player.vimeo.com',
+                'dailymotion.com','www.dailymotion.com','dai.ly',
+                'twitch.tv','www.twitch.tv',
+                'kick.com','www.kick.com',
+                // Music
+                'soundcloud.com','www.soundcloud.com',
+                'bandcamp.com',
+                'open.spotify.com',
+                'music.apple.com',
+                // (サービスによっては埋め込み不可/制限あり。noembed結果で判定)
+            ]);
+
+            // サブドメイン系（例: *.bandcamp.com）
+            if (host.endsWith('.bandcamp.com')) return true;
+
+            return allowHosts.has(host);
         } catch (e) {
             return false;
         }
     },
 
     getNoembedUrl(targetUrl) {
-        // JSONPは使わずJSONで取得（callbackを付けない）
         return `https://noembed.com/embed?url=${encodeURIComponent(targetUrl)}`;
     },
 
     sanitizeOembedHtml(html) {
-        // 安全側: iframe以外は捨てる。srcはhttp/httpsのみ許可。
         if (!html || typeof html !== 'string') return '';
         const match = html.match(/<iframe[\s\S]*?<\/iframe>/i);
         if (!match) return '';
@@ -1191,14 +1215,13 @@ const app = {
         const src = iframe.getAttribute('src') || '';
         if (!/^https?:\/\//i.test(src)) return '';
 
-        // 必要最小限の属性だけ残す
         const clean = document.createElement('iframe');
         clean.src = src;
         clean.setAttribute('loading', 'lazy');
         clean.setAttribute('referrerpolicy', 'origin-when-cross-origin');
         clean.setAttribute('allowfullscreen', '');
         clean.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
-        clean.setAttribute('title', iframe.getAttribute('title') || 'embedded video');
+        clean.setAttribute('title', iframe.getAttribute('title') || 'embedded media');
 
         return clean.outerHTML;
     },
@@ -1212,7 +1235,6 @@ const app = {
         if (!res.ok) throw new Error(`oEmbed fetch failed: ${res.status}`);
         const data = await res.json();
 
-        // noembedはエラー時に {error: ...} を返すことがある
         if (data && data.error) {
             throw new Error(String(data.error));
         }
@@ -1230,22 +1252,11 @@ const app = {
         return cleaned;
     },
 
-    async toggleVideoEmbed(index, url) {
-        if (!this.isEmbeddable(url)) {
-            window.open(url);
-            return;
-        }
-
+    async openVideoEmbed(index, url) {
         const open = this.state.oembed.open;
-        open[index] = !open[index];
+        open[index] = true;
 
-        // closeの場合はDOM更新だけ
-        if (!open[index]) {
-            this.renderResults();
-            return;
-        }
-
-        // openする場合は、先にloading表示を出してからfetch
+        // 先にDOM枠だけ出す
         this.renderResults();
 
         const mountId = `video-embed-mount-${index}`;
@@ -1272,26 +1283,17 @@ const app = {
 
     renderKnowledgePanel(panelData) {
         if (!panelData) return '';
-        
-        // wiki_priorityがtrueの結果を探す
         const wikiResult = panelData.results?.find(r => r.wiki_priority) || null;
-        
-        // Wikipedia結果がない場合はパネルを表示しない
         if (!wikiResult) return '';
-        
         const panel = panelData.featured_panel || {};
         const wikiTitle = panelData.wiki_title || this.state.q;
-        
-        // 説明文を取得（featured_panelから優先、なければwiki結果から）
         let description = '';
         if (panel.description) {
             description = panel.description;
         } else if (wikiResult.summary) {
-            // 最初の300文字までを抽出
             description = wikiResult.summary.substring(0, 300);
             if (wikiResult.summary.length > 300) description += '...';
         }
-        
         return `
             <div class="knowledge-panel">
                 <div class="panel-header">
@@ -1322,7 +1324,6 @@ const app = {
     renderResults() {
         const type = this.state.type;
         const list = this.state.results[type];
-        
         if (list.length > 0) {
             this.refs.stats.textContent = `約 ${this.state.totalCount.toLocaleString()} 件`;
         } else if (!this.state.loading) {
@@ -1338,11 +1339,9 @@ const app = {
 
     renderWebList(list) {
         let html = '';
-        
         if (this.state.panelData) {
             html += this.renderKnowledgePanel(this.state.panelData);
         }
-        
         html += list.map(item => {
             if (this.isInvalid(item.title) && this.isInvalid(item.summary)) return '';
             return `
@@ -1356,7 +1355,6 @@ const app = {
             </div>
             `;
         }).join('');
-        
         this.refs.container.innerHTML = html;
     },
 
@@ -1367,10 +1365,17 @@ const app = {
             const canEmbed = this.isEmbeddable(item.url);
             const isOpen = !!this.state.oembed.open[index];
 
+            // サムネはCSS aspect-ratio:16/9 + object-fit:cover で強制
+            // 「開く」ボタンは削除。リンクはカードクリック（従来通り）
+            // 「埋め込み」ボタンも消して、サムネ中央の再生ボタンで埋め込み表示
+
             return `
             <div class="video-item" onclick="window.open('${item.url}')">
-                <div class="video-thumb">
+                <div class="video-thumb" onclick="event.stopPropagation(); ${canEmbed ? `app.openVideoEmbed(${index}, '${item.url.replace(/'/g, "\\'")}')` : `window.open('${item.url}')`} ">
                     <img src="${item.thumbnail || ''}" onerror="this.src='//placehold.co/320x180/eee/999?text=No+Thumb'">
+                    <div class="video-play-btn" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </div>
                 </div>
                 <div class="video-info">
                     <div class="video-title">${item.title || 'No Title'}</div>
@@ -1378,14 +1383,9 @@ const app = {
                         <span>${new URL(item.url).hostname}</span>
                         ${item.duration ? `• ${item.duration}` : ''}
                         ${item.publishedDate ? `• ${item.publishedDate}` : ''}
+                        ${canEmbed ? (isOpen ? '• 再生中' : '• 埋め込み対応') : ''}
                     </div>
                     <div class="video-desc">${item.summary || ''}</div>
-
-                    <div class="video-actions" onclick="event.stopPropagation()">
-                        ${canEmbed ? `<button class="video-action-btn" onclick="app.toggleVideoEmbed(${index}, '${item.url.replace(/'/g, "\\'")}')">${isOpen ? '埋め込みを閉じる' : '埋め込み'}</button>` : ''}
-                        <a class="video-action-btn" href="${item.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">開く</a>
-                    </div>
-
                     ${canEmbed && isOpen ? `<div id="video-embed-mount-${index}"></div>` : ''}
                 </div>
             </div>
@@ -1408,7 +1408,6 @@ const app = {
             `;
         }).join('');
     },
-
 
     renderSocialList(list) {
         const formatText = (text) => {
@@ -1453,7 +1452,6 @@ const app = {
             `;
         }).join('');
     },
-
 
     renderImageGrid(list) {
         let html = '<div class="image-grid">';

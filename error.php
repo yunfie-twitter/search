@@ -34,6 +34,12 @@
     animation: fadeIn 0.8s var(--ease-out) 0.1s forwards;
 }
 
+.error-code.emoji {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: var(--text-main);
+}
+
 .error-title {
     font-size: 32px;
     font-weight: 700;
@@ -188,6 +194,37 @@
     font-weight: bold;
 }
 
+.maintenance-info {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-top: 24px;
+    max-width: 500px;
+    text-align: left;
+}
+
+.maintenance-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.maintenance-info p {
+    font-size: 14px;
+    color: var(--text-main);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.maintenance-info p:last-child {
+    margin-bottom: 0;
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -236,6 +273,11 @@
 @media (prefers-color-scheme: dark) {
     .error-btn-primary:hover {
         box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    
+    .maintenance-info {
+        background: rgba(251, 191, 36, 0.15);
+        border-color: rgba(251, 191, 36, 0.4);
     }
 }
 </style>
@@ -298,7 +340,14 @@
         URLを確認するか、下の検索ボックスからお探しください。
     </p>
 
-    <div class="error-search">
+    <!-- メンテナンス情報 (動的表示) -->
+    <div class="maintenance-info" id="maintenanceInfo" style="display: none;">
+        <h4>🛠️ メンテナンス情報</h4>
+        <p id="maintenanceSchedule"></p>
+        <p id="maintenanceDetails"></p>
+    </div>
+
+    <div class="error-search" id="errorSearch">
         <form action="search" method="GET" class="error-search-wrapper">
             <svg class="error-search-icon" viewBox="0 0 24 24">
                 <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -320,6 +369,12 @@
             </svg>
             前のページへ
         </button>
+        <a href="status.php" class="error-btn error-btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            ステータス確認
+        </a>
     </div>
 
     <div class="error-suggestions">
@@ -334,38 +389,133 @@
 </div>
 
 <script>
+// --- メンテナンスフラグの確認 ---
+const MAINTENANCE_FLAG_FILE = 'maintenance.json';
+
+async function checkMaintenanceStatus() {
+    try {
+        const response = await fetch(MAINTENANCE_FLAG_FILE);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.enabled) {
+                // メンテナンス中の場合、情報を表示
+                showMaintenanceInfo(data);
+            }
+        }
+    } catch (e) {
+        // ファイルがない場合は無視
+        console.log('No maintenance flag found');
+    }
+}
+
+function showMaintenanceInfo(data) {
+    const infoElement = document.getElementById('maintenanceInfo');
+    const scheduleElement = document.getElementById('maintenanceSchedule');
+    const detailsElement = document.getElementById('maintenanceDetails');
+    
+    if (data.schedule) {
+        scheduleElement.textContent = `予定期間: ${data.schedule}`;
+    }
+    
+    if (data.message) {
+        detailsElement.textContent = data.message;
+    }
+    
+    infoElement.style.display = 'block';
+}
+
 // --- エラータイプによる表示切り替え ---
 const urlParams = new URLSearchParams(window.location.search);
 const errorType = urlParams.get('type') || '404';
 
 const errorConfig = {
-    '404': {
-        code: '404',
-        title: 'ページが見つかりません',
-        message: 'お探しのページは存在しないか、移動した可能性があります。<br>URLを確認するか、下の検索ボックスからお探しください。'
+    '400': {
+        code: '400',
+        title: '不正なリクエスト',
+        message: 'リクエストが不正です。<br>URLを確認して再度お試しください。',
+        showSearch: true
     },
-    '500': {
-        code: '500',
-        title: 'サーバーエラー',
-        message: '一時的なエラーが発生しました。<br>しばらくしてから再度お試しください。'
+    '401': {
+        code: '401',
+        title: '認証が必要です',
+        message: 'このページへのアクセスには認証が必要です。<br>ログインしてから再度お試しください。',
+        showSearch: false
     },
     '403': {
         code: '403',
         title: 'アクセスが拒否されました',
-        message: 'このページへのアクセス権限がありません。<br>ホームから再度お試しください。'
+        message: 'このページへのアクセス権限がありません。<br>ホームから再度お試しください。',
+        showSearch: true
+    },
+    '404': {
+        code: '404',
+        title: 'ページが見つかりません',
+        message: 'お探しのページは存在しないか、移動した可能性があります。<br>URLを確認するか、下の検索ボックスからお探しください。',
+        showSearch: true
+    },
+    '408': {
+        code: '408',
+        title: 'リクエストタイムアウト',
+        message: 'リクエストがタイムアウトしました。<br>ネットワーク接続を確認して再度お試しください。',
+        showSearch: true
+    },
+    '429': {
+        code: '429',
+        title: 'リクエストが多すぎます',
+        message: '短時間に多数のリクエストがありました。<br>しばらく待ってから再度お試しください。',
+        showSearch: false
+    },
+    '500': {
+        code: '500',
+        title: 'サーバーエラー',
+        message: '一時的なエラーが発生しました。<br>しばらくしてから再度お試しください。',
+        showSearch: true
+    },
+    '502': {
+        code: '502',
+        title: 'ゲートウェイエラー',
+        message: 'サーバーが一時的に利用できません。<br>しばらくしてから再度お試しください。',
+        showSearch: true
+    },
+    '503': {
+        code: '503',
+        title: 'サービス利用不可',
+        message: 'サーバーが一時的に過負荷またはメンテナンス中です。<br>しばらくしてから再度お試しください。',
+        showSearch: false
+    },
+    '504': {
+        code: '504',
+        title: 'ゲートウェイタイムアウト',
+        message: 'サーバーからの応答がタイムアウトしました。<br>しばらくしてから再度お試しください。',
+        showSearch: true
     },
     'maintenance': {
         code: '🛠️',
         title: 'メンテナンス中',
-        message: '現在、システムメンテナンス中です。<br>ご不便をおかけしますが、しばらくお待ちください。'
+        message: '現在、システムメンテナンス中です。<br>ご不便をおかけしますが、しばらくお待ちください。',
+        showSearch: false,
+        isEmoji: true
     }
 };
 
 const config = errorConfig[errorType] || errorConfig['404'];
 
-document.getElementById('errorCode').textContent = config.code;
+const errorCodeElement = document.getElementById('errorCode');
+errorCodeElement.textContent = config.code;
+if (config.isEmoji) {
+    errorCodeElement.classList.add('emoji');
+}
+
 document.getElementById('errorTitle').textContent = config.title;
 document.getElementById('errorMessage').innerHTML = config.message;
+
+// 検索ボックスの表示/非表示
+if (!config.showSearch) {
+    document.getElementById('errorSearch').style.display = 'none';
+}
+
+// メンテナンスステータスチェック
+checkMaintenanceStatus();
 
 // --- Header Scroll Effect ---
 const header = document.querySelector('.nav-header');

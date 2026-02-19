@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>エラー - wholphin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:ital,wght@0,300..800;1,300..800&family=Noto+Sans+JP:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="about.css">
+
+<style>
+/* エラーページ専用スタイル */
+.error-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 24px;
+    text-align: center;
+}
+
+.error-code {
+    font-size: 120px;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--primary) 0%, rgba(26, 115, 232, 0.5) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeIn 0.8s var(--ease-out) 0.1s forwards;
+}
+
+.error-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeIn 0.8s var(--ease-out) 0.2s forwards;
+}
+
+.error-message {
+    font-size: 16px;
+    color: var(--text-sub);
+    line-height: 1.7;
+    max-width: 500px;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeIn 0.8s var(--ease-out) 0.3s forwards;
+}
+
+.error-search {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeIn 0.8s var(--ease-out) 0.4s forwards;
+}
+
+.error-search-wrapper {
+    position: relative;
+}
+
+.error-search-box {
+    width: 100%;
+    height: 56px;
+    padding: 0 20px 0 56px;
+    border: 2px solid var(--border);
+    border-radius: 28px;
+    font-size: 16px;
+    color: var(--text-main);
+    background: var(--bg-surface);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.error-search-box:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
+}
+
+.error-search-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    fill: var(--icon-color);
+}
+
+.error-actions {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeIn 0.8s var(--ease-out) 0.5s forwards;
+}
+
+.error-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 48px;
+    padding: 0 28px;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    border: none;
+}
+
+.error-btn-primary {
+    background: var(--text-main);
+    color: var(--bg-base);
+}
+
+.error-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.error-btn-secondary {
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+}
+
+.error-btn-secondary:hover {
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+}
+
+.error-illustration {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeIn 0.8s var(--ease-out) 0.6s forwards;
+}
+
+.error-illustration svg {
+    width: 100%;
+    height: auto;
+}
+
+.error-suggestions {
+    margin-top: 48px;
+    opacity: 0;
+    animation: fadeIn 0.8s var(--ease-out) 0.7s forwards;
+}
+
+.error-suggestions h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 16px;
+}
+
+.error-suggestions ul {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    display: inline-block;
+}
+
+.error-suggestions li {
+    font-size: 15px;
+    color: var(--text-sub);
+    padding-left: 24px;
+    margin-bottom: 8px;
+    position: relative;
+    line-height: 1.6;
+}
+
+.error-suggestions li::before {
+    content: '•';
+    position: absolute;
+    left: 8px;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 404専用イラスト */
+.whale-404 {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+@media (max-width: 600px) {
+    .error-code {
+        font-size: 80px;
+    }
+    
+    .error-title {
+        font-size: 24px;
+    }
+    
+    .error-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .error-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    .error-btn-primary:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+}
+</style>
+
+</head>
+<body>
+
+<div style="position:fixed; top:-20%; right:-10%; width:60vw; height:60vw; background:radial-gradient(circle, rgba(26,115,232,0.03) 0%, transparent 60%); pointer-events:none; z-index:-1;"></div>
+
+<nav class="nav-header">
+    <a href="index.php" class="brand-logo">wholphin</a>
+</nav>
+
+<div class="error-container">
+    <!-- イラスト (404専用) -->
+    <div class="error-illustration">
+        <svg class="whale-404" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- クジラのイラスト -->
+            <ellipse cx="100" cy="90" rx="70" ry="40" fill="var(--primary)" opacity="0.2"/>
+            <ellipse cx="100" cy="80" rx="60" ry="35" fill="var(--primary)" opacity="0.5"/>
+            <circle cx="85" cy="75" r="4" fill="var(--text-main)"/>
+            <path d="M 40 80 Q 35 85 40 90" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M 160 80 Q 165 85 160 90" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <!-- 噴水 -->
+            <path d="M 100 40 Q 95 20 90 10 M 100 40 Q 100 15 100 5 M 100 40 Q 105 20 110 10" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+        </svg>
+    </div>
+
+    <div class="error-code" id="errorCode">404</div>
+    <h1 class="error-title" id="errorTitle">ページが見つかりません</h1>
+    <p class="error-message" id="errorMessage">
+        お探しのページは存在しないか、移動した可能性があります。<br>
+        URLを確認するか、下の検索ボックスからお探しください。
+    </p>
+
+    <div class="error-search">
+        <form action="search" method="GET" class="error-search-wrapper">
+            <svg class="error-search-icon" viewBox="0 0 24 24">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input type="text" name="q" class="error-search-box" placeholder="キーワードで検索" autocomplete="off" autofocus>
+        </form>
+    </div>
+
+    <div class="error-actions">
+        <a href="index.php" class="error-btn error-btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            ホームに戻る
+        </a>
+        <button onclick="history.back()" class="error-btn error-btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+            前のページへ
+        </button>
+    </div>
+
+    <div class="error-suggestions">
+        <h3>こんなことをお探しですか？</h3>
+        <ul>
+            <li><a href="about.php" style="color: var(--primary); text-decoration: none;">wholphin について</a></li>
+            <li><a href="help.php" style="color: var(--primary); text-decoration: none;">使い方ガイド</a></li>
+            <li><a href="status.php" style="color: var(--primary); text-decoration: none;">サービスステータス</a></li>
+            <li><a href="privacy.php" style="color: var(--primary); text-decoration: none;">プライバシーポリシー</a></li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// --- エラータイプによる表示切り替え ---
+const urlParams = new URLSearchParams(window.location.search);
+const errorType = urlParams.get('type') || '404';
+
+const errorConfig = {
+    '404': {
+        code: '404',
+        title: 'ページが見つかりません',
+        message: 'お探しのページは存在しないか、移動した可能性があります。<br>URLを確認するか、下の検索ボックスからお探しください。'
+    },
+    '500': {
+        code: '500',
+        title: 'サーバーエラー',
+        message: '一時的なエラーが発生しました。<br>しばらくしてから再度お試しください。'
+    },
+    '403': {
+        code: '403',
+        title: 'アクセスが拒否されました',
+        message: 'このページへのアクセス権限がありません。<br>ホームから再度お試しください。'
+    },
+    'maintenance': {
+        code: '🛠️',
+        title: 'メンテナンス中',
+        message: '現在、システムメンテナンス中です。<br>ご不便をおかけしますが、しばらくお待ちください。'
+    }
+};
+
+const config = errorConfig[errorType] || errorConfig['404'];
+
+document.getElementById('errorCode').textContent = config.code;
+document.getElementById('errorTitle').textContent = config.title;
+document.getElementById('errorMessage').innerHTML = config.message;
+
+// --- Header Scroll Effect ---
+const header = document.querySelector('.nav-header');
+if (header) {
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 20) {
+            header.classList.add('scrolled');
+        } else {
+            header.classList.remove('scrolled');
+        }
+    });
+}
+</script>
+
+</body>
+</html>

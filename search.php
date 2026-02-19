@@ -1,5 +1,5 @@
 <?php
-// search-3.php (既存仕様維持・完全版 + Misskey画像対応)
+// search-3.php (既存仕様維持・完全版 + Misskey画像対応 + ナレッジパネル)
 
 // クエリ取得
 $q = isset($_GET['q']) ? $_GET['q'] : '';
@@ -275,6 +275,113 @@ main {
 
 .stats { font-size: 14px; color: var(--text-sub); margin-bottom: 24px; height: 20px; }
 
+/* --- Knowledge Panel --- */
+.knowledge-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    padding: 20px;
+    margin-bottom: 32px;
+    background: var(--bg-surface);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.panel-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.panel-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--bg-hover);
+}
+
+.panel-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.panel-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.panel-subtitle {
+    font-size: 14px;
+    color: var(--text-sub);
+    margin-bottom: 12px;
+}
+
+.panel-description {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-main);
+    margin-bottom: 12px;
+}
+
+.panel-facts {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.panel-fact {
+    display: flex;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.panel-fact-label {
+    font-weight: 600;
+    color: var(--text-sub);
+    min-width: 100px;
+    flex-shrink: 0;
+}
+
+.panel-fact-value {
+    color: var(--text-main);
+}
+
+.panel-source {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-sub);
+}
+
+.panel-source a {
+    color: var(--text-link);
+    text-decoration: none;
+}
+
+.panel-source a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 820px) {
+    .knowledge-panel {
+        padding: 16px;
+    }
+    
+    .panel-header {
+        flex-direction: column;
+    }
+    
+    .panel-image {
+        width: 100%;
+        height: 200px;
+    }
+}
+
 /* --- Results Items (Web, Video, Image, News, Social) --- */
 .web-item { margin-bottom: 36px; }
 .web-cite {
@@ -342,7 +449,7 @@ main {
 .social-date { font-size: 12px; color: var(--text-sub); margin-left: auto; }
 .social-content { font-size: 14px; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; }
 
-/* Misskey画像グリッド（新規追加） */
+/* Misskey画像グリッド */
 .social-images {
     display: grid;
     gap: 8px;
@@ -577,15 +684,16 @@ const app = {
     state: {
         q: '',
         type: 'web',
-        pages: { web: 1, image: 1, video: 1, news: 1, social: 1, panel: 1 },
-        results: { web: [], image: [], video: [], news: [], social: [], panel: [] },
-        hasMore: { web: true, image: true, video: true, news: true, social: true, panel: false },
+        pages: { web: 1, image: 1, video: 1, news: 1, social: 1 },
+        results: { web: [], image: [], video: [], news: [], social: [] },
+        hasMore: { web: true, image: true, video: true, news: true, social: true },
         loading: false,
         totalCount: 0,
         suggestIndex: -1,
         suggestions: [],
         isListening: false,
-        pendingFetch: null  // ロード中のタブ切替を保持: {q, type, reset} or null
+        pendingFetch: null,
+        panelData: null  // ナレッジパネルデータを保持
     },
 
     refs: {
@@ -858,7 +966,6 @@ const app = {
         this.renderResults();
         
         if (this.state.results[type].length === 0 && this.state.q) {
-            // [修正] ロード中ならpendingFetchに積み、そうでなければ即座にfetchData
             if (this.state.loading) {
                 this.state.pendingFetch = { q: this.state.q, type: this.state.type, reset: true };
             } else {
@@ -877,9 +984,10 @@ const app = {
     },
 
     resetResults() {
-        this.state.pages = { web: 1, image: 1, video: 1, news: 1, social: 1, panel: 1 };
-        this.state.results = { web: [], image: [], video: [], news: [], social: [], panel: [] };
-        this.state.hasMore = { web: true, image: true, video: true, news: true, social: true, panel: false };
+        this.state.pages = { web: 1, image: 1, video: 1, news: 1, social: 1 };
+        this.state.results = { web: [], image: [], video: [], news: [], social: [] };
+        this.state.hasMore = { web: true, image: true, video: true, news: true, social: true };
+        this.state.panelData = null;
         this.refs.container.innerHTML = '';
         this.refs.stats.textContent = '';
     },
@@ -908,15 +1016,34 @@ const app = {
         }
 
         try {
-            const res = await fetch(`${API_ENDPOINT}?q=${encodeURIComponent(this.state.q)}&type=${type}&pages=${page}`);
-            const data = await res.json();
-            
-            const newItems = data.results || [];
-            this.state.results[type] = [...this.state.results[type], ...newItems];
-            this.state.totalCount = data.count || this.state.results[type].length;
+            // webタイプの初回検索時にpanelデータも取得
+            if (type === 'web' && isInitial && !this.state.panelData) {
+                const panelPromise = fetch(`${API_ENDPOINT}?q=${encodeURIComponent(this.state.q)}&type=panel`);
+                const webPromise = fetch(`${API_ENDPOINT}?q=${encodeURIComponent(this.state.q)}&type=${type}&pages=${page}`);
+                
+                const [panelRes, webRes] = await Promise.all([panelPromise, webPromise]);
+                const panelData = await panelRes.json();
+                const webData = await webRes.json();
+                
+                this.state.panelData = panelData;
+                
+                const newItems = webData.results || [];
+                this.state.results[type] = [...this.state.results[type], ...newItems];
+                this.state.totalCount = webData.count || this.state.results[type].length;
+            } else {
+                const res = await fetch(`${API_ENDPOINT}?q=${encodeURIComponent(this.state.q)}&type=${type}&pages=${page}`);
+                const data = await res.json();
+                
+                const newItems = data.results || [];
+                this.state.results[type] = [...this.state.results[type], ...newItems];
+                this.state.totalCount = data.count || this.state.results[type].length;
+            }
 
-            if (newItems.length === 0) this.state.hasMore[type] = false;
-            else this.state.pages[type]++;
+            if (this.state.results[type].length === 0 || (this.state.results[type].length > 0 && this.state.results[type].length === this.state.totalCount)) {
+                this.state.hasMore[type] = false;
+            } else {
+                this.state.pages[type]++;
+            }
 
             this.renderResults();
         } catch (e) {
@@ -925,7 +1052,7 @@ const app = {
         } finally {
             this.state.loading = false;
             if (this.state.pages[type] > 5) this.toggleLoader(false);
-            this.flushPendingFetch();  // [修正] ロード完了後にpendingFetchを処理
+            this.flushPendingFetch();
         }
     },
 
@@ -933,19 +1060,16 @@ const app = {
         if (this.state.hasMore[this.state.type]) this.fetchData();
         else {
             this.toggleLoader(false);
-            this.flushPendingFetch();  // [修正] 追加ロード終了時もpendingFetchを処理
+            this.flushPendingFetch();
         }
     },
 
     flushPendingFetch() {
-        // ロード中に積まれた切替要求を処理(ロード終了後に呼ばれる)
         const p = this.state.pendingFetch;
         if (!p) return;
 
-        // 古い要求は捨てる(現在の状態と一致しているかチェック)
         if (p.q === this.state.q && p.type === this.state.type && !this.state.loading) {
             this.state.pendingFetch = null;
-            // 再入を避けるため、0ms で次タスク側に逃がす
             setTimeout(() => this.fetchData(!!p.reset), 0);
         }
     },
@@ -977,6 +1101,40 @@ const app = {
         return s === 'null' || s === 'undefined' || s === '';
     },
 
+    renderKnowledgePanel(panelData) {
+        if (!panelData || !panelData.wiki_found) return '';
+        
+        const panel = panelData.featured_panel || {};
+        const wikiResult = panelData.results?.find(r => r.wiki_priority) || {};
+        
+        return `
+            <div class="knowledge-panel">
+                <div class="panel-header">
+                    ${panel.image_url ? `<img src="${panel.image_url}" class="panel-image" alt="${panel.title || ''}">` : ''}
+                    <div class="panel-info">
+                        <h2 class="panel-title">${panelData.wiki_title || this.state.q}</h2>
+                        ${panel.subtitle ? `<div class="panel-subtitle">${panel.subtitle}</div>` : ''}
+                    </div>
+                </div>
+                ${panel.description ? `<div class="panel-description">${panel.description}</div>` : ''}
+                ${wikiResult.summary && !panel.description ? `<div class="panel-description">${wikiResult.summary.substring(0, 300)}...</div>` : ''}
+                ${panel.facts && panel.facts.length > 0 ? `
+                    <div class="panel-facts">
+                        ${panel.facts.map(fact => `
+                            <div class="panel-fact">
+                                <span class="panel-fact-label">${fact.label}:</span>
+                                <span class="panel-fact-value">${fact.value}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                <div class="panel-source">
+                    ${wikiResult.url ? `<a href="${wikiResult.url}" target="_blank">Wikipedia</a> より` : 'Wikipedia より'}
+                </div>
+            </div>
+        `;
+    },
+
     renderResults() {
         const type = this.state.type;
         const list = this.state.results[type];
@@ -995,7 +1153,14 @@ const app = {
     },
 
     renderWebList(list) {
-        this.refs.container.innerHTML = list.map(item => {
+        let html = '';
+        
+        // ナレッジパネルを先頭に追加
+        if (this.state.panelData) {
+            html += this.renderKnowledgePanel(this.state.panelData);
+        }
+        
+        html += list.map(item => {
             if (this.isInvalid(item.title) && this.isInvalid(item.summary)) return '';
             return `
             <div class="web-item">
@@ -1008,6 +1173,8 @@ const app = {
             </div>
             `;
         }).join('');
+        
+        this.refs.container.innerHTML = html;
     },
 
     renderVideoList(list) {
@@ -1050,20 +1217,15 @@ const app = {
 
 
     renderSocialList(list) {
-        // テキスト整形関数(内部定義または外出し)
         const formatText = (text) => {
             if (!text) return '';
-            // XSS対策エスケープ
             let t = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-            // URLリンク化
             t = t.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#1a0dab;text-decoration:none;">$1</a>');
-            // 改行対応
             t = t.replace(/\n/g, '<br>');
             return t;
         };
 
         this.refs.container.innerHTML = list.map(item => {
-            // 画像グリッド処理(既存コード)
             let imagesHtml = '';
             if (item.hasImages && item.images && item.images.length > 0) {
                 const imgCount = item.images.length;
@@ -1082,7 +1244,6 @@ const app = {
                 `;
             }
 
-            // 本文の整形(formatText適用)
             const contentHtml = formatText(item.summary || item.content || item.title);
 
             return `
@@ -1092,7 +1253,6 @@ const app = {
                     <span class="social-author">${item.author || new URL(item.url).hostname}</span>
                     <span class="social-date">${item.publishedDate || ''}</span>
                 </div>
-                <!-- ここを変更: formatText適用済みHTMLを出力 -->
                 <div class="social-content">${contentHtml}</div>
                 ${imagesHtml}
             </div>

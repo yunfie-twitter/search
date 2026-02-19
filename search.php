@@ -201,7 +201,7 @@ header {
 .mic-btn svg { fill: var(--primary); }
 
 .search-box-wrap.has-value .mic-btn { display: none; }
-.search-box-wrap.has-value .clear-btn { display: flex; }
+search-box-wrap.has-value .clear-btn { display: flex; }
 
 /* Voice Active State */
 .mic-btn.listening svg { display: none; }
@@ -406,8 +406,23 @@ main {
     .web-cite img { border: 1px solid #5f6368; }
 }
 
-.video-item { display: flex; gap: 16px; margin-bottom: 24px; cursor: pointer; }
+/* Video */
+.video-item { display: flex; gap: 16px; margin-bottom: 24px; cursor: pointer; border-radius: 14px; padding: 10px; transition: background 0.15s, box-shadow 0.15s, border-color 0.15s; border: 1px solid transparent; }
 .video-item:hover .video-title { color: var(--primary); }
+
+/* アクティブ（再生中）の強調を強める */
+.video-item.is-active {
+    background: var(--bg-hover);
+    border-color: rgba(26,115,232,0.45);
+    box-shadow: 0 4px 14px rgba(26,115,232,0.12);
+}
+@media (prefers-color-scheme: dark) {
+    .video-item.is-active {
+        border-color: rgba(138,180,248,0.55);
+        box-shadow: 0 4px 14px rgba(138,180,248,0.12);
+    }
+}
+
 .video-thumb {
     width: 180px; aspect-ratio: 16/9; flex-shrink: 0;
     border-radius: var(--radius-m); background: #000;
@@ -416,7 +431,15 @@ main {
 }
 .video-thumb img { width: 100%; height: 100%; object-fit: cover; }
 
-/* 見本の「大きいプレーヤー + 中央再生ボタン」をサムネ領域で表現 */
+/* 再生中はサムネを隠す（黒背景 + 微弱グラデ） */
+.video-item.is-active .video-thumb img { display: none; }
+.video-item.is-active .video-thumb::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.10), rgba(0,0,0,0.75));
+}
+
 .video-thumb::after {
     content: '';
     position: absolute;
@@ -442,6 +465,11 @@ main {
     backdrop-filter: blur(2px);
 }
 
+/* 再生中はボタンも薄くする（誤タップ抑止） */
+.video-item.is-active .video-play-btn {
+    background: rgba(0,0,0,0.35);
+}
+
 .video-play-btn svg {
     width: 22px;
     height: 22px;
@@ -455,7 +483,28 @@ main {
     margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2;
     -webkit-box-orient: vertical; overflow: hidden;
 }
-.video-meta { font-size: 13px; color: var(--text-sub); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+.video-meta {
+    font-size: 13px;
+    color: var(--text-sub);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.video-meta .video-favicon {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    object-fit: cover;
+    background: var(--bg-hover);
+    border: 1px solid rgba(0,0,0,0.08);
+}
+@media (prefers-color-scheme: dark) {
+    .video-meta .video-favicon { border: 1px solid rgba(255,255,255,0.12); }
+}
+
 .video-desc {
     font-size: 13px; color: var(--text-sub); margin-top: 8px;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -1173,7 +1222,6 @@ const app = {
             const u = new URL(url);
             const host = u.hostname.replace(/^www\./, '');
 
-            // 動画配信 / ライブ / 楽曲系: noembedで拾える可能性が高い所を広めに許可
             const allowHosts = new Set([
                 // Video
                 'youtube.com','m.youtube.com','youtu.be',
@@ -1186,12 +1234,9 @@ const app = {
                 'bandcamp.com',
                 'open.spotify.com',
                 'music.apple.com',
-                // (サービスによっては埋め込み不可/制限あり。noembed結果で判定)
             ]);
 
-            // サブドメイン系（例: *.bandcamp.com）
             if (host.endsWith('.bandcamp.com')) return true;
-
             return allowHosts.has(host);
         } catch (e) {
             return false;
@@ -1255,8 +1300,6 @@ const app = {
     async openVideoEmbed(index, url) {
         const open = this.state.oembed.open;
         open[index] = true;
-
-        // 先にDOM枠だけ出す
         this.renderResults();
 
         const mountId = `video-embed-mount-${index}`;
@@ -1364,13 +1407,11 @@ const app = {
 
             const canEmbed = this.isEmbeddable(item.url);
             const isOpen = !!this.state.oembed.open[index];
-
-            // サムネはCSS aspect-ratio:16/9 + object-fit:cover で強制
-            // 「開く」ボタンは削除。リンクはカードクリック（従来通り）
-            // 「埋め込み」ボタンも消して、サムネ中央の再生ボタンで埋め込み表示
+            const host = new URL(item.url).hostname;
+            const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`;
 
             return `
-            <div class="video-item" onclick="window.open('${item.url}')">
+            <div class="video-item ${isOpen ? 'is-active' : ''}" onclick="window.open('${item.url}')">
                 <div class="video-thumb" onclick="event.stopPropagation(); ${canEmbed ? `app.openVideoEmbed(${index}, '${item.url.replace(/'/g, "\\'")}')` : `window.open('${item.url}')`} ">
                     <img src="${item.thumbnail || ''}" onerror="this.src='//placehold.co/320x180/eee/999?text=No+Thumb'">
                     <div class="video-play-btn" aria-hidden="true">
@@ -1380,7 +1421,8 @@ const app = {
                 <div class="video-info">
                     <div class="video-title">${item.title || 'No Title'}</div>
                     <div class="video-meta">
-                        <span>${new URL(item.url).hostname}</span>
+                        <img class="video-favicon" src="${faviconUrl}" onerror="this.style.display='none'" alt="">
+                        <span>${host}</span>
                         ${item.duration ? `• ${item.duration}` : ''}
                         ${item.publishedDate ? `• ${item.publishedDate}` : ''}
                         ${canEmbed ? (isOpen ? '• 再生中' : '• 埋め込み対応') : ''}

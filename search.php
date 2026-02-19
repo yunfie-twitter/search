@@ -201,7 +201,7 @@ header {
 .mic-btn svg { fill: var(--primary); }
 
 .search-box-wrap.has-value .mic-btn { display: none; }
-search-box-wrap.has-value .clear-btn { display: flex; }
+.search-box-wrap.has-value .clear-btn { display: flex; }
 
 /* Voice Active State */
 .mic-btn.listening svg { display: none; }
@@ -431,14 +431,8 @@ main {
 }
 .video-thumb img { width: 100%; height: 100%; object-fit: cover; }
 
-/* 再生中はサムネを隠す（黒背景 + 微弱グラデ） */
-.video-item.is-active .video-thumb img { display: none; }
-.video-item.is-active .video-thumb::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.10), rgba(0,0,0,0.75));
-}
+/* 再生中はサムネ枠ごと消す（枠が残る問題の修正） */
+.video-item.is-active .video-thumb { display: none; }
 
 .video-thumb::after {
     content: '';
@@ -463,11 +457,6 @@ main {
     display: grid;
     place-items: center;
     backdrop-filter: blur(2px);
-}
-
-/* 再生中はボタンも薄くする（誤タップ抑止） */
-.video-item.is-active .video-play-btn {
-    background: rgba(0,0,0,0.35);
 }
 
 .video-play-btn svg {
@@ -1297,7 +1286,31 @@ const app = {
         return cleaned;
     },
 
+    stopAllEmbeds(exceptIndex = null) {
+        const open = this.state.oembed.open;
+        Object.keys(open).forEach(k => {
+            const idx = parseInt(k, 10);
+            if (Number.isNaN(idx)) return;
+            if (exceptIndex !== null && idx === exceptIndex) return;
+            if (!open[idx]) return;
+
+            const mount = document.getElementById(`video-embed-mount-${idx}`);
+            if (mount) mount.innerHTML = '';
+            open[idx] = false;
+        });
+    },
+
     async openVideoEmbed(index, url) {
+        // すでに開いてるなら閉じる（トグル）
+        if (this.state.oembed.open[index]) {
+            this.stopAllEmbeds(null);
+            this.renderResults();
+            return;
+        }
+
+        // 別の再生が続く問題: 先に他の埋め込みを停止
+        this.stopAllEmbeds(index);
+
         const open = this.state.oembed.open;
         open[index] = true;
         this.renderResults();
@@ -1425,7 +1438,7 @@ const app = {
                         <span>${host}</span>
                         ${item.duration ? `• ${item.duration}` : ''}
                         ${item.publishedDate ? `• ${item.publishedDate}` : ''}
-                        ${canEmbed ? (isOpen ? '• 再生中' : '• 埋め込み対応') : ''}
+                        ${canEmbed ? (isOpen ? '• 再生中（タップで停止）' : '• 埋め込み対応') : ''}
                     </div>
                     <div class="video-desc">${item.summary || ''}</div>
                     ${canEmbed && isOpen ? `<div id="video-embed-mount-${index}"></div>` : ''}

@@ -1,0 +1,136 @@
+{
+  "name": "wholphin - 高速でシンプルな検索",
+  "short_name": "wholphin",
+  "description": "高速でシンプル、共有から即検索できるPWA",
+  "lang": "ja",
+  "dir": "ltr",
+
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "tabbed",
+    "standalone",
+    "browser"
+  ],
+
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary",
+
+  "icons": [
+    {
+      "src": "/img/maskable_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+
+  "screenshots": [
+    {
+      "src": "/img/screenshot_mobile_1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/img/screenshot_mobile_2.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+      "src": "/img/screenshot_mobile_3.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+      "src": "/img/screenshot_mobile_4.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/img/screenshot_desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+
+  "categories": ["search", "productivity", "utilities"],
+
+  "share_target": {
+    "action": "/search.php",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "q",
+      "text": "q",
+      "url": "q"
+    }
+  },
+
+  "shortcuts": [
+    {
+      "name": "新規検索",
+      "short_name": "検索",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/img/icon-search.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+
+  "protocol_handlers": [
+    {
+      "protocol": "web+wholphin",
+      "url": "/?q=%s"
+    }
+  ],
+
+  "file_handlers": [
+    {
+      "action": "/search.php",
+      "accept": {
+        "text/plain": [".txt"]
+      }
+    }
+  ],
+
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "focus-existing"]
+  },
+
+  "edge_side_panel": {
+    "preferred_width": 420
+  },
+
+  "tab_strip": {
+    "home_tab": {
+      "scope_patterns": [
+        { "pathname": "/" },
+        { "pathname": "/index.html" }
+      ]
+    },
+    "new_tab_button": {
+      "url": "/"
+    }
+  },
+
+  "window_controls_overlay": {
+    "display": "overlay"
+  }
+}

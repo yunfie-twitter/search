@@ -398,12 +398,10 @@ async function checkMaintenanceStatus() {
         if (response.ok) {
             const data = await response.json();
             if (data.enabled) {
-                // メンテナンス中の場合、情報を表示
                 showMaintenanceInfo(data);
             }
         }
     } catch (e) {
-        // ファイルがない場合は無視
         console.log('No maintenance flag found');
     }
 }
@@ -429,6 +427,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const errorType = urlParams.get('type') || '404';
 
 const errorConfig = {
+    // 4xx Client Errors
     '400': {
         code: '400',
         title: '不正なリクエスト',
@@ -439,6 +438,12 @@ const errorConfig = {
         code: '401',
         title: '認証が必要です',
         message: 'このページへのアクセスには認証が必要です。<br>ログインしてから再度お試しください。',
+        showSearch: false
+    },
+    '402': {
+        code: '402',
+        title: '支払いが必要です',
+        message: 'このコンテンツは有料です。<br>支払い手続きを完了してください。',
         showSearch: false
     },
     '403': {
@@ -453,11 +458,108 @@ const errorConfig = {
         message: 'お探しのページは存在しないか、移動した可能性があります。<br>URLを確認するか、下の検索ボックスからお探しください。',
         showSearch: true
     },
+    '405': {
+        code: '405',
+        title: 'メソッドが許可されていません',
+        message: 'このリクエストメソッドはサポートされていません。<br>ホームから再度お試しください。',
+        showSearch: true
+    },
+    '406': {
+        code: '406',
+        title: '受け入れ不可',
+        message: 'サーバーが受け入れ可能なレスポンスを生成できません。<br>ブラウザの設定を確認してください。',
+        showSearch: false
+    },
+    '407': {
+        code: '407',
+        title: 'プロキシ認証が必要です',
+        message: 'プロキシサーバーでの認証が必要です。<br>ネットワーク管理者にお問い合わせください。',
+        showSearch: false
+    },
     '408': {
         code: '408',
         title: 'リクエストタイムアウト',
         message: 'リクエストがタイムアウトしました。<br>ネットワーク接続を確認して再度お試しください。',
         showSearch: true
+    },
+    '409': {
+        code: '409',
+        title: '競合',
+        message: 'リクエストが現在のリソースの状態と競合しています。<br>しばらく待ってから再度お試しください。',
+        showSearch: false
+    },
+    '410': {
+        code: '410',
+        title: '削除済み',
+        message: 'リクエストされたリソースは永久に削除されました。<br>ホームから再度お探しください。',
+        showSearch: true
+    },
+    '413': {
+        code: '413',
+        title: 'ペイロードが大きすぎます',
+        message: 'リクエストのデータサイズが大きすぎます。<br>データを分割するか、サイズを減らしてください。',
+        showSearch: false
+    },
+    '414': {
+        code: '414',
+        title: 'URIが長すぎます',
+        message: 'リクエストのURIが長すぎます。<br>URLを短くするか、POSTメソッドを使用してください。',
+        showSearch: false
+    },
+    '415': {
+        code: '415',
+        title: 'サポートされていないメディアタイプ',
+        message: 'リクエストのメディアタイプはサポートされていません。<br>ファイル形式を変更して再度お試しください。',
+        showSearch: false
+    },
+    '418': {
+        code: '418',
+        title: 'I\'m a teapot',
+        message: 'サーバーはティーポットです。<br>コーヒーを涻れることはできません。(ジョークステータス)',
+        showSearch: true,
+        isEmoji: true
+    },
+    '421': {
+        code: '421',
+        title: '誤ったリクエスト',
+        message: 'リクエストが間違ったサーバーに送られました。<br>再度お試しください。',
+        showSearch: true
+    },
+    '422': {
+        code: '422',
+        title: '処理できないエンティティ',
+        message: 'リクエストの形式は正しいですが、内容にエラーがあります。<br>入力内容を確認してください。',
+        showSearch: false
+    },
+    '423': {
+        code: '423',
+        title: 'ロックされています',
+        message: 'リソースがロックされています。<br>しばらく待ってから再度お試しください。',
+        showSearch: false
+    },
+    '424': {
+        code: '424',
+        title: '依存関係の失敗',
+        message: '他のリクエストの失敗により、このリクエストも失敗しました。<br>再度お試しください。',
+        showSearch: false
+    },
+    '425': {
+        code: '425',
+        title: '早すぎます',
+        message: 'サーバーがまだ準備できていません。<br>しばらく待ってから再度お試しください。',
+        showSearch: false
+    },
+    '426': {
+        code: '426',
+        title: 'アップグレードが必要です',
+        message: 'このリクエストを処理するにはプロトコルのアップグレードが必要です。<br>ブラウザを更新してください。',
+        showSearch: false
+    },
+    '428': {
+        code: '428',
+        title: '事前条件が必要です',
+        message: 'リクエストに必要な事前条件が含まれていません。<br>リクエスト内容を確認してください。',
+        showSearch: false
     },
     '429': {
         code: '429',
@@ -465,10 +567,30 @@ const errorConfig = {
         message: '短時間に多数のリクエストがありました。<br>しばらく待ってから再度お試しください。',
         showSearch: false
     },
+    '431': {
+        code: '431',
+        title: 'ヘッダーが大きすぎます',
+        message: 'リクエストヘッダーのサイズが大きすぎます。<br>Cookieを削除するか、ブラウザを再起動してください。',
+        showSearch: false
+    },
+    '451': {
+        code: '451',
+        title: '法的な理由により利用不可',
+        message: '法的な理由により、このコンテンツは利用できません。<br>お住まいの地域ではアクセスが制限されている可能性があります。',
+        showSearch: false
+    },
+    
+    // 5xx Server Errors
     '500': {
         code: '500',
         title: 'サーバーエラー',
         message: '一時的なエラーが発生しました。<br>しばらくしてから再度お試しください。',
+        showSearch: true
+    },
+    '501': {
+        code: '501',
+        title: '実装されていません',
+        message: 'サーバーはこの機能をサポートしていません。<br>ホームから再度お試しください。',
         showSearch: true
     },
     '502': {
@@ -489,6 +611,44 @@ const errorConfig = {
         message: 'サーバーからの応答がタイムアウトしました。<br>しばらくしてから再度お試しください。',
         showSearch: true
     },
+    '505': {
+        code: '505',
+        title: 'HTTPバージョンはサポートされていません',
+        message: 'サーバーはこのHTTPバージョンをサポートしていません。<br>ブラウザを更新してください。',
+        showSearch: false
+    },
+    '506': {
+        code: '506',
+        title: '内部設定エラー',
+        message: 'サーバーの内部設定に問題があります。<br>しばらく待ってから再度お試しください。',
+        showSearch: false
+    },
+    '507': {
+        code: '507',
+        title: 'ストレージ不足',
+        message: 'サーバーのストレージが不足しています。<br>しばらく待ってから再度お試しください。',
+        showSearch: false
+    },
+    '508': {
+        code: '508',
+        title: 'ループが検出されました',
+        message: 'サーバーが無限ループを検出しました。<br>しばらく待ってから再度お試しください。',
+        showSearch: false
+    },
+    '510': {
+        code: '510',
+        title: '拡張が必要です',
+        message: 'リクエストを処理するにはさらなる拡張が必要です。<br>ホームから再度お試しください。',
+        showSearch: false
+    },
+    '511': {
+        code: '511',
+        title: 'ネットワーク認証が必要です',
+        message: 'ネットワークへのアクセスに認証が必要です。<br>ネットワークにログインしてください。',
+        showSearch: false
+    },
+    
+    // Special
     'maintenance': {
         code: '🛠️',
         title: 'メンテナンス中',

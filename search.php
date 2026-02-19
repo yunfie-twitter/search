@@ -429,6 +429,60 @@ main {
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
+.video-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.video-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--text-main);
+    background: var(--bg-surface);
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.video-action-btn:hover {
+    background: var(--bg-hover);
+}
+
+.video-embed {
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    background: #000;
+}
+
+.video-embed iframe {
+    width: 100%;
+    aspect-ratio: 16/9;
+    height: auto;
+    display: block;
+    border: 0;
+}
+
+.video-embed-loading {
+    padding: 14px;
+    font-size: 13px;
+    color: var(--text-sub);
+    background: var(--bg-surface);
+}
+
+.video-embed-error {
+    padding: 14px;
+    font-size: 13px;
+    color: #b3261e;
+    background: var(--bg-surface);
+}
+
 /* News Item Style */
 .news-item { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
 .news-item:last-child { border-bottom: none; }
@@ -693,7 +747,11 @@ const app = {
         suggestions: [],
         isListening: false,
         pendingFetch: null,
-        panelData: null
+        panelData: null,
+        oembed: {
+            cache: {},
+            open: {}
+        }
     },
 
     refs: {
@@ -988,6 +1046,7 @@ const app = {
         this.state.results = { web: [], image: [], video: [], news: [], social: [] };
         this.state.hasMore = { web: true, image: true, video: true, news: true, social: true };
         this.state.panelData = null;
+        this.state.oembed = { cache: {}, open: {} };
         this.refs.container.innerHTML = '';
         this.refs.stats.textContent = '';
     },
@@ -1100,6 +1159,117 @@ const app = {
         return s === 'null' || s === 'undefined' || s === '';
     },
 
+    isEmbeddable(url) {
+        if (!url) return false;
+        try {
+            const u = new URL(url);
+            const host = u.hostname.replace(/^www\./, '');
+            // とりあえずYouTube系のみ（要望あれば追加）
+            if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtu.be') return true;
+            return false;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    getNoembedUrl(targetUrl) {
+        // JSONPは使わずJSONで取得（callbackを付けない）
+        return `https://noembed.com/embed?url=${encodeURIComponent(targetUrl)}`;
+    },
+
+    sanitizeOembedHtml(html) {
+        // 安全側: iframe以外は捨てる。srcはhttp/httpsのみ許可。
+        if (!html || typeof html !== 'string') return '';
+        const match = html.match(/<iframe[\s\S]*?<\/iframe>/i);
+        if (!match) return '';
+
+        const tmp = document.createElement('div');
+        tmp.innerHTML = match[0];
+        const iframe = tmp.querySelector('iframe');
+        if (!iframe) return '';
+
+        const src = iframe.getAttribute('src') || '';
+        if (!/^https?:\/\//i.test(src)) return '';
+
+        // 必要最小限の属性だけ残す
+        const clean = document.createElement('iframe');
+        clean.src = src;
+        clean.setAttribute('loading', 'lazy');
+        clean.setAttribute('referrerpolicy', 'origin-when-cross-origin');
+        clean.setAttribute('allowfullscreen', '');
+        clean.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+        clean.setAttribute('title', iframe.getAttribute('title') || 'embedded video');
+
+        return clean.outerHTML;
+    },
+
+    async fetchOEmbed(targetUrl) {
+        const cache = this.state.oembed.cache;
+        if (cache[targetUrl]) return cache[targetUrl];
+
+        const apiUrl = this.getNoembedUrl(targetUrl);
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error(`oEmbed fetch failed: ${res.status}`);
+        const data = await res.json();
+
+        // noembedはエラー時に {error: ...} を返すことがある
+        if (data && data.error) {
+            throw new Error(String(data.error));
+        }
+
+        const cleaned = {
+            title: data.title || '',
+            provider_name: data.provider_name || '',
+            author_name: data.author_name || '',
+            thumbnail_url: data.thumbnail_url || '',
+            html: this.sanitizeOembedHtml(data.html || ''),
+            url: data.url || targetUrl
+        };
+
+        cache[targetUrl] = cleaned;
+        return cleaned;
+    },
+
+    async toggleVideoEmbed(index, url) {
+        if (!this.isEmbeddable(url)) {
+            window.open(url);
+            return;
+        }
+
+        const open = this.state.oembed.open;
+        open[index] = !open[index];
+
+        // closeの場合はDOM更新だけ
+        if (!open[index]) {
+            this.renderResults();
+            return;
+        }
+
+        // openする場合は、先にloading表示を出してからfetch
+        this.renderResults();
+
+        const mountId = `video-embed-mount-${index}`;
+        const mount = document.getElementById(mountId);
+        if (mount) {
+            mount.innerHTML = `<div class="video-embed-loading">埋め込みを読み込み中...</div>`;
+        }
+
+        try {
+            const o = await this.fetchOEmbed(url);
+            if (!o.html) throw new Error('embed html is empty');
+            const mount2 = document.getElementById(mountId);
+            if (mount2) {
+                mount2.innerHTML = `<div class="video-embed">${o.html}</div>`;
+            }
+        } catch (e) {
+            const mount2 = document.getElementById(mountId);
+            if (mount2) {
+                mount2.innerHTML = `<div class="video-embed-error">埋め込みの取得に失敗しました</div>`;
+            }
+            console.error(e);
+        }
+    },
+
     renderKnowledgePanel(panelData) {
         if (!panelData) return '';
         
@@ -1191,8 +1361,12 @@ const app = {
     },
 
     renderVideoList(list) {
-        this.refs.container.innerHTML = list.map(item => {
+        this.refs.container.innerHTML = list.map((item, index) => {
             if (this.isInvalid(item.title)) return '';
+
+            const canEmbed = this.isEmbeddable(item.url);
+            const isOpen = !!this.state.oembed.open[index];
+
             return `
             <div class="video-item" onclick="window.open('${item.url}')">
                 <div class="video-thumb">
@@ -1206,6 +1380,13 @@ const app = {
                         ${item.publishedDate ? `• ${item.publishedDate}` : ''}
                     </div>
                     <div class="video-desc">${item.summary || ''}</div>
+
+                    <div class="video-actions" onclick="event.stopPropagation()">
+                        ${canEmbed ? `<button class="video-action-btn" onclick="app.toggleVideoEmbed(${index}, '${item.url.replace(/'/g, "\\'")}')">${isOpen ? '埋め込みを閉じる' : '埋め込み'}</button>` : ''}
+                        <a class="video-action-btn" href="${item.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">開く</a>
+                    </div>
+
+                    ${canEmbed && isOpen ? `<div id="video-embed-mount-${index}"></div>` : ''}
                 </div>
             </div>
             `;
